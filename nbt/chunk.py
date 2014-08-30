@@ -8,12 +8,12 @@ import array, math
 
 
 class Chunk(object):
-	"""Class for representing a single chunk."""
-	def __init__(self, nbt):
-		#print 'PRETTY TREE: ' + nbt.pretty_tree()
-		self.chunk_data = nbt['Level']
-		self.coords = self.chunk_data['xPos'],self.chunk_data['zPos']
-		self.blocks = BlockArray(self.chunk_data['Sections'])
+    """Class for representing a single chunk."""
+    def __init__(self, nbt):
+        #print 'PRETTY TREE: ' + nbt.pretty_tree()
+        self.chunk_data = nbt['Level']
+        self.coords = self.chunk_data['xPos'],self.chunk_data['zPos']
+        self.blocks = BlockArray(self.chunk_data['Sections'])
 
     def get_coords(self):
         """Return the coordinates of this chunk."""
@@ -28,11 +28,11 @@ class BlockArray(object):
     """Convenience class for dealing with a Block/data byte array."""
     def __init__(self, sections):
         """Create a new BlockArray, defaulting to no block or data bytes."""
-		self.blocksList = []
-		self.dataList = []
-		for section in sections:
-			blocksBytes = section['Blocks'].value
-			dataBytes = section['Data'].value
+        self.blocksList = []
+        self.dataList = []
+        for section in sections:
+            blocksBytes = section['Blocks'].value
+            dataBytes = section['Data'].value
             if isinstance(blocksBytes, (bytearray, array.array)):
                 self.blocksList = list(blocksBytes)
             else:

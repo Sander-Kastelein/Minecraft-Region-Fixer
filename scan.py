@@ -629,10 +629,6 @@ def scan_region_file(scanned_regionfile_obj, options):
         block_aggregation = [0 for i in xrange(4096)]
         containers = []
         r = scanned_regionfile_obj
-        o = scan_region_file.options
-        delete_entities = o.delete_entities
-        entity_limit = o.entity_limit
-        regionset = scan_region_file.regionset
         # counters of problems
         chunk_count = 0
         corrupted = 0
