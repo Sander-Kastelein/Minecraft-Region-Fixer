@@ -6,12 +6,14 @@ from io import BytesIO
 from struct import pack, unpack
 import array, math
 
+
 class Chunk(object):
 	"""Class for representing a single chunk."""
 	def __init__(self, nbt):
-		chunk_data = nbt['Level']
-		self.coords = chunk_data['xPos'],chunk_data['zPos']
-		self.blocks = BlockArray(chunk_data['Blocks'].value, chunk_data['Data'].value)
+		#print 'PRETTY TREE: ' + nbt.pretty_tree()
+		self.chunk_data = nbt['Level']
+		self.coords = self.chunk_data['xPos'],self.chunk_data['zPos']
+		self.blocks = BlockArray(self.chunk_data['Sections'])
 
 	def get_coords(self):
 		"""Return the coordinates of this chunk."""
@@ -24,17 +26,21 @@ class Chunk(object):
 
 class BlockArray(object):
 	"""Convenience class for dealing with a Block/data byte array."""
-	def __init__(self, blocksBytes=None, dataBytes=None):
+	def __init__(self, sections):
 		"""Create a new BlockArray, defaulting to no block or data bytes."""
-		if isinstance(blocksBytes, (bytearray, array.array)):
-			self.blocksList = list(blocksBytes)
-		else:
-			self.blocksList = [0]*32768 # Create an empty block list (32768 entries of zero (air))
-
-		if isinstance(dataBytes, (bytearray, array.array)):
-			self.dataList = list(dataBytes)
-		else:
-			self.dataList = [0]*16384 # Create an empty data list (32768 4-bit entries of zero make 16384 byte entries)
+		self.blocksList = []
+		self.dataList = []
+		for section in sections:
+			blocksBytes = section['Blocks'].value
+			dataBytes = section['Data'].value
+			if isinstance(blocksBytes, (bytearray, array.array)):
+				self.blocksList.extend(list(blocksBytes))
+			else:
+				self.blocksList.extend([0]*32768) # Create an empty block list (32768 entries of zero (air))
+			if isinstance(dataBytes, (bytearray, array.array)):
+				self.dataList.extend(list(dataBytes))
+			else:
+				self.dataList.extend([0]*16384) # Create an empty data list (32768 4-bit entries of zero make 16384 byte entries)
 
 	# Get all block entries
 	def get_all_blocks(self):
