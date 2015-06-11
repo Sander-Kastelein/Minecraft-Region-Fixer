@@ -33,6 +33,15 @@ class MalformedFileError(Exception):
     """Exception raised on parse error."""
     pass
 
+def decode_string(s):
+    for codec in ('utf-8', 'ISO-8859-1'):
+        try:
+            decoded = s.decode(codec)
+            return decoded
+        except:
+            pass
+    return ''
+
 class TAG(object):
     """TAG, a variable with an intrinsic name."""
     id = None
@@ -262,7 +271,7 @@ class TAG_String(TAG, Sequence):
         read = buffer.read(length.value)
         if len(read) != length.value:
             raise StructError()
-        self.value = read.decode("utf-8")
+        self.value = decode_string(read)
 
     def _render_buffer(self, buffer):
         save_val = self.value.encode("utf-8")
