@@ -24,17 +24,20 @@ class Chunk(object):
         return "Chunk("+str(self.coords[0])+","+str(self.coords[1])+")"
 
 
+EMPTY_SECTION = [0] * 4096
+
 class BlockArray(object):
     """Convenience class for dealing with a Block/data byte array."""
     def __init__(self, sections):
         """Create a new BlockArray, defaulting to no block or data bytes."""
+        # This is broken code. It only pulls out the blocks and block data for the final section
         self.blocksList = []
         self.dataList = []
         for section in sections:
             blocksBytes = section['Blocks'].value
             dataBytes = section['Data'].value
             if isinstance(blocksBytes, (bytearray, array.array)):
-                self.blocksList = list(blocksBytes)
+                self.blocksList.extend(list(blocksBytes))
             else:
                 self.blocksList = [0]*32768 # Create an empty block list (32768 entries of zero (air))
 
@@ -42,6 +45,33 @@ class BlockArray(object):
                 self.dataList = list(dataBytes)
             else:
                 self.dataList = [0]*16384 # Create an empty data list (32768 4-bit entries of zero make 16384 byte entries)
+
+#    def __init__(self, sections):
+#        """Create a new BlockArray, defaulting to no block or data bytes."""
+#        self.blocksList = []
+#        self.dataList = []
+#        y_level = -1
+#        for section in sections:
+#            y_level += 1
+#            real_y_section = section['Y'].value
+#            while y_level < real_y_section:
+#                self.blocksList.extend(EMPTY_SECTION)
+#                y_level += 1
+#            blocksBytes = section['Blocks'].value
+#            dataBytes = section['Data'].value
+#            if isinstance(blocksBytes, (bytearray, array.array)):
+#                self.blocksList.extend(list(blocksBytes))
+#            else:
+#                self.blocksList.extend(EMPTY_SECTION)
+#                # self.blocksList = [0]*32768 # Create an empty block list (32768 entries of zero (air))
+#
+#            if isinstance(dataBytes, (bytearray, array.array)):
+#                self.dataList = list(dataBytes)
+#            else:
+#                self.dataList = [0]*16384 # Create an empty data list (32768 4-bit entries of zero make 16384 byte entries)
+#        while y_level < 16:
+#            self.blocksList.extend(EMPTY_SECTION)
+#            y_level += 1
 
     # Get all block entries
     def get_all_blocks(self):

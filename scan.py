@@ -40,6 +40,9 @@ import time
 import sys
 import traceback
 
+import array
+import mysql.connector as mysql
+
 DIAMOND_COUNTS = {
     'DIAMOND': 1,
     'DIAMOND_ORE': 3,
@@ -396,6 +399,30 @@ BLOCK_MAP = {
     2267: 'RECORD_12',
     6900: 'CIVCRAFT_INTRO'}
 
+
+def saveBlockStats(table_name, coords, block_aggregation):
+    stmt = 'insert into {0} (x,z,mat,count) VALUES (%s,%s,%s,%s)'.format(table_name)
+    # cnx opened in scan_region_file
+    if not cnx:
+      return
+    cur = cnx.cursor()
+    try:
+        rows = []
+        for i, count in enumerate(block_aggregation):
+            if count <= 0:
+                continue
+            if i in BLOCK_MAP:
+                mat = BLOCK_MAP[i]
+            else:
+                mat = str(i)
+            rows.append((coords[0], coords[1], mat, count))
+        if rows:
+            cur.executemany(stmt, rows)
+            cnx.commit()
+    finally:
+        cur.close()
+
+
 def findTag(compoundTag, keyName):
     for item in compoundTag.tags:
         if item.name == keyName:
@@ -611,6 +638,8 @@ def scan_all_players(world_obj):
 #        print '{0}: {1}'.format(name, count)
 
 
+cnx = None
+
 def scan_region_file(scanned_regionfile_obj, options):
     """ Given a scanned region file object with the information of a 
         region files scans it and returns the same obj filled with the
@@ -622,11 +651,14 @@ def scan_region_file(scanned_regionfile_obj, options):
         entiti_limit is the threshold tof entities to conisder a chunk
         with too much entities problems.
     """
+
     o = options
     delete_entities = o.delete_entities
     entity_limit = o.entity_limit
     try:
-        block_aggregation = [0 for i in xrange(4096)]
+        global cnx
+        # cnx = mysql.connect(user='block_stats', password='', host='localhost', port='3306', database='block_stats')
+        block_aggregation = [0] * 4096
         containers = []
         r = scanned_regionfile_obj
         # counters of problems
@@ -709,6 +741,7 @@ def scan_region_file(scanned_regionfile_obj, options):
             for k in sharing:
                 r[k] = (r[k][TUPLE_NUM_ENTITIES], world.CHUNK_SHARED_OFFSET)
                 shared_counter += 1
+            saveBlockStats('region', r.get_coords(), block_aggregation)
 
         except KeyboardInterrupt:
             print "\nInterrupted by user\n"
@@ -732,6 +765,10 @@ def scan_region_file(scanned_regionfile_obj, options):
         except_type, except_class, tb = sys.exc_info()
         r = (r.path, r.coords, (except_type, except_class, traceback.extract_tb(tb)))
         return r
+    finally:
+        if cnx:
+            cnx.close()
+            cnx = None
 
 def multithread_scan_regionfile(region_file):
     """ Does the multithread stuff for scan_region_file """
@@ -751,6 +788,7 @@ def scan_chunk(region_file, coords, global_coords, options, block_aggregation, c
     """ Takes a RegionFile obj and the local coordinatesof the chunk as
         inputs, then scans the chunk and returns all the data."""
     try:
+        chunk_block_aggregation = [0] * 4096
         chunk = region_file.get_chunk(*coords)
         data_coords = world.get_chunk_data_coords(chunk)
         num_entities = len(chunk["Level"]["Entities"])
@@ -768,9 +806,25 @@ def scan_chunk(region_file, coords, global_coords, options, block_aggregation, c
             scan_time = time.time()
             # Grab our chunk info
             real_chunk = nbt_chunk.Chunk(chunk)
-            blocks = real_chunk.blocks.get_all_blocks()
-            for block_id in blocks:
-                block_aggregation[block_id] += 1
+            # Let's just parse NBT chunk sections to get accurate block counts
+            chunk_sections = real_chunk.chunk_data['Sections']
+            parsed_sections = [0] * 16
+            for section in chunk_sections:
+                blocksBytes = section['Blocks'].value
+                if isinstance(blocksBytes, (bytearray, array.array)):
+                    blocks = blocksBytes
+                else:
+                    continue  # Assume AIR for all blocks in section
+                parsed_sections[section['Y'].value] = 1
+                for i, block_id in enumerate(blocks):
+                    chunk_block_aggregation[block_id] += 1
+                    block_aggregation[block_id] += 1
+            for was_parsed in parsed_sections:
+                if was_parsed:
+                    continue
+                # Chunk section was AIR, y16*z16*x16 = 4096 blocks
+                chunk_block_aggregation[block_id] += 4096
+                block_aggregation[block_id] += 4096
             real_chunk_data = real_chunk.chunk_data
             if findTag(real_chunk_data, 'Entities'):
                 for entity in findTag(real_chunk_data, 'Entities').tags:
@@ -782,6 +836,7 @@ def scan_chunk(region_file, coords, global_coords, options, block_aggregation, c
                     container_contents = logContainer(entity)
                     if container_contents:
                         containers.append(container_contents)
+            saveBlockStats('chunk', global_coords, chunk_block_aggregation)
 
     except region.InconceivedChunk as e:
         chunk = None
@@ -881,7 +936,7 @@ def scan_regionset(regionset, options):
 
     # printing status
     region_counter = 0
-    total_block_aggregation = [0 for i in xrange(4096)]
+    total_block_aggregation = [0] * 4096
     container_log_file = open('containers.txt', 'w')
 
     while not result.ready() or not q.empty():
@@ -927,6 +982,7 @@ def scan_regionset(regionset, options):
                     pbar.update(region_counter)
     container_log_file.close()
 
+    # saveBlockStats('world', (0, 0), total_block_aggregation)
     for block_id, count in enumerate(total_block_aggregation):
         if count:
             if block_id in BLOCK_MAP:
