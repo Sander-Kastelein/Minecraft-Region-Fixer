@@ -41,7 +41,7 @@ import sys
 import traceback
 
 import array
-import mysql.connector as mysql
+# import mysql.connector as mysql
 
 DIAMOND_COUNTS = {
     'DIAMOND': 1,
@@ -823,8 +823,8 @@ def scan_chunk(region_file, coords, global_coords, options, block_aggregation, c
                 if was_parsed:
                     continue
                 # Chunk section was AIR, y16*z16*x16 = 4096 blocks
-                chunk_block_aggregation[block_id] += 4096
-                block_aggregation[block_id] += 4096
+                chunk_block_aggregation[0] += 4096
+                block_aggregation[0] += 4096
             real_chunk_data = real_chunk.chunk_data
             if findTag(real_chunk_data, 'Entities'):
                 for entity in findTag(real_chunk_data, 'Entities').tags:
