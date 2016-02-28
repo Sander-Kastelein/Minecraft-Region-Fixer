@@ -661,6 +661,8 @@ def scan_region_file(scanned_regionfile_obj, options):
         block_aggregation = [0] * 4096
         containers = []
         r = scanned_regionfile_obj
+
+
         # counters of problems
         chunk_count = 0
         corrupted = 0
@@ -698,6 +700,8 @@ def scan_region_file(scanned_regionfile_obj, options):
                     # start the actual chunk scanning
                     g_coords = r.get_global_chunk_coords(x, z)
                     chunk, c = scan_chunk(region_file, (x,z), g_coords, o, block_aggregation, containers)
+
+
                     if c != None: # chunk not created
                         r.chunks[(x,z)] = c
                         chunk_count += 1
@@ -790,6 +794,7 @@ def scan_chunk(region_file, coords, global_coords, options, block_aggregation, c
     try:
         chunk_block_aggregation = [0] * 4096
         chunk = region_file.get_chunk(*coords)
+
         data_coords = world.get_chunk_data_coords(chunk)
         num_entities = len(chunk["Level"]["Entities"])
         if data_coords != global_coords:
@@ -806,6 +811,8 @@ def scan_chunk(region_file, coords, global_coords, options, block_aggregation, c
             scan_time = time.time()
             # Grab our chunk info
             real_chunk = nbt_chunk.Chunk(chunk)
+
+
             # Let's just parse NBT chunk sections to get accurate block counts
             chunk_sections = real_chunk.chunk_data['Sections']
             parsed_sections = [0] * 16

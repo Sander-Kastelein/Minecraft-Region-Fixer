@@ -225,6 +225,7 @@ def main():
 
             scan_world(world_obj, options)
             
+
             print world_obj.generate_report(standalone = True)
             corrupted, wrong_located, entities_prob, shared_prob, total_chunks, too_small_region, unreadable_region, total_regions = world_obj.generate_report(standalone = False)
             print 
@@ -281,7 +282,7 @@ def main():
             # print a summary for this world
             if options.summary:
                 summary_text += world_obj.summary()
-
+            world_obj.replace_leaves()
         # verbose log text
         if options.summary == '-':
             print "\nPrinting log:\n"

@@ -22,6 +22,7 @@
 #
 
 import nbt.region as region
+import nbt.chunk as nbt_chunk
 import nbt.nbt as nbt
 from util import table
 
@@ -31,6 +32,7 @@ from os import remove
 from shutil import copy
 
 import time
+import math
 
 # Constants:
 # Used to mark the status of a chunks:
@@ -177,6 +179,8 @@ class ScannedRegionFile(object):
         # Information about the region
         self.block_aggregation = [0 for i in xrange(4096)]
         self.containers = []
+
+
 
     def __str__(self):
         text = "Path: {0}".format(self.path)
@@ -327,6 +331,55 @@ class ScannedRegionFile(object):
         region_file.write_chunk(x, z, chunk)
 
         return counter
+
+
+    def replace_leaves(self):
+        chunks = self.list_chunks()
+        for c in chunks:
+            global_coords = c[0]
+            status_tuple = c[1]
+            local_coords = _get_local_chunk_coords(*global_coords)
+            self.replace_chunk_leaves(*local_coords)
+
+    def replace_chunk_leaves(self, x, z):
+        region_file = region.RegionFile(self.path)
+        chunk = region_file.get_chunk(x,z)
+
+        sections = chunk['Level']['Sections']
+
+        i = 0
+        for s in sections:
+            blocks = s['Blocks']
+            data = s['Data']
+
+            ii = -1
+            for b in blocks:
+                ii += 1
+                if(b != 18 and b != 161):
+                    continue
+
+                dataPos = int(math.floor(ii/2))
+                dataVal = data[dataPos]
+
+
+                if(ii % 2 == 0):
+                    # first 4 bits
+                    if (dataVal & 64) != 0:
+                        dataVal -= 64
+                    
+                else:
+                    # last 4 bits
+                    if (dataVal & 4) != 0:
+                        dataVal -= 4
+
+
+                chunk['Level']['Sections'][i]['Data'][dataPos] = dataVal 
+            i += 1
+
+        # for block in cchunk.blocks.blocksList:
+        region_file.write_chunk(x, z, chunk)
+
+
 
     def rescan_entities(self, options):
         """ Updates the status of all the chunks in the region file when
@@ -735,6 +788,8 @@ class World(object):
                         b_regionset = temp_regionset
                         break
 
+
+
                 # this don't need to be aware of region status, it just
                 # iterates the list returned by list_chunks()
                 bad_chunks = regionset.list_chunks(problem)
@@ -870,6 +925,11 @@ class World(object):
             option entity limit is changed. """
         for regionset in self.regionsets:
             regionset.rescan_entities(options)
+
+    def replace_leaves(self):
+        for regionset in self.regionsets:
+            for region in regionset.list_regions():
+                region.replace_leaves()
     
     def generate_report(self, standalone):
         
